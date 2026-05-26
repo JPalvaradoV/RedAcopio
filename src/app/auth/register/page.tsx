@@ -1,13 +1,11 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
 import { supabaseBrowser } from '@/lib/supabase-browser'
 
 type Role = 'usuario' | 'admin'
 
 export default function RegisterPage() {
-  const router = useRouter()
   const [role, setRole] = useState<Role | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -58,7 +56,7 @@ export default function RegisterPage() {
       .insert({ id: userId, nombre: nombre.trim(), role })
 
     if (profileError) {
-      setError('Error al guardar el perfil. Intenta de nuevo.')
+      setError(`Error al guardar el perfil: ${profileError.message}`)
       setLoading(false)
       return
     }
@@ -80,14 +78,13 @@ export default function RegisterPage() {
         })
 
       if (centroError) {
-        setError('Error al crear el centro. Intenta de nuevo.')
+        setError(`Error al crear el centro: ${centroError.message}`)
         setLoading(false)
         return
       }
     }
 
-    router.push('/')
-    router.refresh()
+    window.location.href = '/'
   }
 
   return (
