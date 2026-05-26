@@ -40,4 +40,5 @@ export interface CentroAcopio {
   rating: number
   totalComentarios: number
   activo: boolean
+  adminId?: string
 }

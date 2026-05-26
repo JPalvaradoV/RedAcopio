@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import type { CentroAcopio } from '@/lib/data'
 import { useStore } from '@/lib/store'
+import { useAuth } from '@/contexts/AuthContext'
 
 interface Props {
   centro: CentroAcopio
@@ -11,7 +12,8 @@ interface Props {
 
 export default function ModalDonacion({ centro, onClose }: Props) {
   const { agregarDonacion } = useStore()
-  const [nombre, setNombre] = useState('')
+  const { nombre: nombreAuth } = useAuth()
+  const [nombre, setNombre] = useState(nombreAuth)
   const [monto, setMonto] = useState('')
   const [enviado, setEnviado] = useState(false)
   const [error, setError] = useState('')

@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useStore } from '@/lib/store'
+import { useAuth } from '@/contexts/AuthContext'
 import { type NecesidadUrgente } from '@/lib/data'
 import ModalPedidoEmergencia from '@/components/ModalPedidoEmergencia'
 
@@ -25,10 +26,21 @@ function formatFecha(iso: string) {
 
 export default function MiCentroPage() {
   const { centros, agregarNecesidad, eliminarNecesidad } = useStore()
+  const { id: userId, role } = useAuth()
   const [showModal, setShowModal] = useState(false)
 
-  const centroLogueado = centros[0]
+  const centroLogueado = centros.find(c => c.adminId === userId)
   const necesidades = centroLogueado?.necesidadesUrgentes ?? []
+
+  if (role !== 'admin' || !centroLogueado) {
+    return (
+      <div className="max-w-5xl mx-auto px-4 py-16 text-center text-ch-gray-text">
+        <p className="text-4xl mb-3">🔒</p>
+        <p className="font-semibold text-ch-dark mb-1">Acceso restringido</p>
+        <p className="text-sm">Esta sección es solo para administradores de centros.</p>
+      </div>
+    )
+  }
 
   async function handleGuardar(nueva: Omit<NecesidadUrgente, 'id'>) {
     if (!centroLogueado) return

@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import type { CentroAcopio } from '@/lib/data'
 import { useStore } from '@/lib/store'
+import { useAuth } from '@/contexts/AuthContext'
 
 interface Props {
   centro: CentroAcopio
@@ -27,6 +28,7 @@ function formatFecha(iso: string) {
 
 export default function ModalDetalleCentro({ centro, onClose }: Props) {
   const { agregarComentario } = useStore()
+  const { nombre: nombreAuth } = useAuth()
 
   const comentarios = centro.comentarios
   const ratingPromedio = centro.rating
@@ -34,7 +36,7 @@ export default function ModalDetalleCentro({ centro, onClose }: Props) {
   // Formulario de nuevo comentario
   const [estrellaHover, setEstrellaHover] = useState(0)
   const [estrellasSeleccionadas, setEstrellasSeleccionadas] = useState(0)
-  const [nombreUsuario, setNombreUsuario] = useState('')
+  const [nombreUsuario, setNombreUsuario] = useState(nombreAuth)
   const [texto, setTexto] = useState('')
   const [enviado, setEnviado] = useState(false)
   const [error, setError] = useState('')
