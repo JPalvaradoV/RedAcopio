@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import type { CentroAcopio } from '@/lib/data'
 import { useStore } from '@/lib/store'
-import { useAuth } from '@/contexts/AuthContext'
+import { useAuthOptional } from '@/contexts/AuthContext'
 
 interface Props {
   centro: CentroAcopio
@@ -12,8 +12,8 @@ interface Props {
 
 export default function ModalDonacion({ centro, onClose }: Props) {
   const { agregarDonacion } = useStore()
-  const { nombre: nombreAuth } = useAuth()
-  const [nombre, setNombre] = useState(nombreAuth)
+  const user = useAuthOptional()
+  const [nombre, setNombre] = useState(user?.nombre ?? '')
   const [monto, setMonto] = useState('')
   const [enviado, setEnviado] = useState(false)
   const [error, setError] = useState('')
@@ -62,7 +62,29 @@ export default function ModalDonacion({ centro, onClose }: Props) {
         </div>
 
         <div className="p-6">
-          {!enviado ? (
+          {!user ? (
+            <div className="text-center py-6">
+              <p className="text-4xl mb-3">🔒</p>
+              <p className="font-semibold text-ch-dark mb-1">Debes iniciar sesión para donar</p>
+              <p className="text-ch-gray-text text-sm mb-5">
+                Crea una cuenta gratuita o inicia sesión para registrar tu donación.
+              </p>
+              <div className="flex flex-col gap-2">
+                <a
+                  href="/auth/login"
+                  className="w-full bg-ch-blue hover:bg-ch-blue-hover text-white font-semibold text-sm py-2.5 rounded transition-colors text-center"
+                >
+                  Iniciar sesión
+                </a>
+                <a
+                  href="/auth/register"
+                  className="w-full border border-ch-blue text-ch-blue hover:bg-ch-gray font-semibold text-sm py-2.5 rounded transition-colors text-center"
+                >
+                  Crear cuenta
+                </a>
+              </div>
+            </div>
+          ) : !enviado ? (
             <form onSubmit={handleSubmit} noValidate>
               {/* Nombre */}
               <div className="mb-4">

@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import type { CentroAcopio } from '@/lib/data'
 import { useStore } from '@/lib/store'
-import { useAuth } from '@/contexts/AuthContext'
+import { useAuthOptional } from '@/contexts/AuthContext'
 
 interface Props {
   centro: CentroAcopio
@@ -28,7 +28,7 @@ function formatFecha(iso: string) {
 
 export default function ModalDetalleCentro({ centro, onClose }: Props) {
   const { agregarComentario } = useStore()
-  const { nombre: nombreAuth } = useAuth()
+  const user = useAuthOptional()
 
   const comentarios = centro.comentarios
   const ratingPromedio = centro.rating
@@ -36,7 +36,7 @@ export default function ModalDetalleCentro({ centro, onClose }: Props) {
   // Formulario de nuevo comentario
   const [estrellaHover, setEstrellaHover] = useState(0)
   const [estrellasSeleccionadas, setEstrellasSeleccionadas] = useState(0)
-  const [nombreUsuario, setNombreUsuario] = useState(nombreAuth)
+  const [nombreUsuario, setNombreUsuario] = useState(user?.nombre ?? '')
   const [texto, setTexto] = useState('')
   const [enviado, setEnviado] = useState(false)
   const [error, setError] = useState('')
@@ -182,7 +182,27 @@ export default function ModalDetalleCentro({ centro, onClose }: Props) {
             )}
 
             {/* Formulario de nuevo comentario */}
-            {!enviado ? (
+            {!user ? (
+              <div className="border border-gray-200 rounded p-4 text-center">
+                <p className="text-2xl mb-2">🔒</p>
+                <p className="font-semibold text-ch-dark text-sm mb-1">Inicia sesión para comentar</p>
+                <p className="text-ch-gray-text text-xs mb-4">Comparte tu experiencia con este centro.</p>
+                <div className="flex gap-2">
+                  <a
+                    href="/auth/login"
+                    className="flex-1 bg-ch-blue hover:bg-ch-blue-hover text-white font-semibold text-sm py-2 rounded transition-colors text-center"
+                  >
+                    Iniciar sesión
+                  </a>
+                  <a
+                    href="/auth/register"
+                    className="flex-1 border border-ch-blue text-ch-blue hover:bg-ch-gray font-semibold text-sm py-2 rounded transition-colors text-center"
+                  >
+                    Crear cuenta
+                  </a>
+                </div>
+              </div>
+            ) : !enviado ? (
               <form onSubmit={handleEnviarComentario} noValidate className="border border-gray-200 rounded p-4">
                 <h4 className="font-semibold text-ch-dark text-sm mb-3">Dejar un comentario</h4>
 

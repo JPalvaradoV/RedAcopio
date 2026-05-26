@@ -1,4 +1,3 @@
-import { redirect } from 'next/navigation'
 import { createSupabaseServerClient } from '@/lib/supabase-server'
 import { getCentros } from '@/lib/queries'
 import Providers from '@/components/Providers'
@@ -11,29 +10,32 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const supabase = await createSupabaseServerClient()
   const { data: { user } } = await supabase.auth.getUser()
 
-  if (!user) redirect('/auth/login')
+  let authUser: AuthUser | null = null
 
-  const { data: profileData } = await supabase
-    .from('profiles')
-    .select('nombre, role')
-    .eq('id', user.id)
-    .single()
+  if (user) {
+    const { data: profileData } = await supabase
+      .from('profiles')
+      .select('nombre, role')
+      .eq('id', user.id)
+      .single()
 
-  if (!profileData) redirect('/auth/login')
-
-  const authUser: AuthUser = {
-    id: user.id,
-    nombre: profileData.nombre,
-    role: profileData.role as 'usuario' | 'admin',
+    if (profileData) {
+      authUser = {
+        id: user.id,
+        nombre: profileData.nombre,
+        role: profileData.role as 'usuario' | 'admin',
+      }
+    }
   }
 
   const centros = await getCentros()
-  const iniciales = profileData.nombre
+
+  const iniciales = authUser?.nombre
     .split(' ')
     .slice(0, 2)
     .map((p: string) => p[0])
     .join('')
-    .toUpperCase()
+    .toUpperCase() ?? ''
 
   return (
     <>
@@ -54,16 +56,35 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           </div>
 
           <div className="flex items-center gap-3">
-            <div className="hidden sm:flex flex-col items-end">
-              <span className="text-white text-sm font-medium">{profileData.nombre}</span>
-              <span className="text-blue-200 text-xs capitalize">
-                {profileData.role === 'admin' ? 'Administrador de centro' : 'Donante'}
-              </span>
-            </div>
-            <div className="w-9 h-9 rounded-full bg-white bg-opacity-20 flex items-center justify-center text-white font-bold text-sm">
-              {iniciales}
-            </div>
-            <LogoutButton />
+            {authUser ? (
+              <>
+                <div className="hidden sm:flex flex-col items-end">
+                  <span className="text-white text-sm font-medium">{authUser.nombre}</span>
+                  <span className="text-blue-200 text-xs capitalize">
+                    {authUser.role === 'admin' ? 'Administrador de centro' : 'Donante'}
+                  </span>
+                </div>
+                <div className="w-9 h-9 rounded-full bg-white bg-opacity-20 flex items-center justify-center text-white font-bold text-sm">
+                  {iniciales}
+                </div>
+                <LogoutButton />
+              </>
+            ) : (
+              <div className="flex items-center gap-2">
+                <a
+                  href="/auth/login"
+                  className="text-white text-sm font-semibold px-4 py-2 rounded hover:bg-white hover:bg-opacity-10 transition-colors"
+                >
+                  Iniciar sesión
+                </a>
+                <a
+                  href="/auth/register"
+                  className="bg-white text-ch-blue text-sm font-bold px-4 py-2 rounded hover:bg-blue-50 transition-colors"
+                >
+                  Registrarse
+                </a>
+              </div>
+            )}
           </div>
         </div>
 
@@ -75,7 +96,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
                   Inicio
                 </a>
               </li>
-              {authUser.role === 'admin' && (
+              {authUser?.role === 'admin' && (
                 <li>
                   <a href="/mi-centro" className="block px-4 py-2.5 text-blue-100 hover:bg-white hover:bg-opacity-10 hover:text-white transition-colors font-medium">
                     Mi Centro

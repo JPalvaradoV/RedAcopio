@@ -12,7 +12,7 @@ export default function Providers({
 }: {
   children: ReactNode
   initialCentros: CentroAcopio[]
-  user: AuthUser
+  user: AuthUser | null
 }) {
   return (
     <AuthProvider user={user}>

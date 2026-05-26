@@ -11,12 +11,16 @@ export interface AuthUser {
 
 const AuthContext = createContext<AuthUser | null>(null)
 
-export function AuthProvider({ children, user }: { children: ReactNode; user: AuthUser }) {
+export function AuthProvider({ children, user }: { children: ReactNode; user: AuthUser | null }) {
   return <AuthContext.Provider value={user}>{children}</AuthContext.Provider>
 }
 
-export function useAuth() {
+export function useAuthOptional(): AuthUser | null {
+  return useContext(AuthContext)
+}
+
+export function useAuth(): AuthUser {
   const ctx = useContext(AuthContext)
-  if (!ctx) throw new Error('useAuth debe usarse dentro de AuthProvider')
+  if (!ctx) throw new Error('useAuth debe usarse dentro de AuthProvider con usuario autenticado')
   return ctx
 }

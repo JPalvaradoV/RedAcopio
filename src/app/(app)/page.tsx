@@ -42,12 +42,6 @@ export default function HomePage() {
               >
                 Ver centros de acopio →
               </a>
-              <a
-                href="/mi-centro"
-                className="border border-white text-white font-semibold py-3 px-6 rounded text-sm hover:bg-white hover:bg-opacity-10 transition-colors text-center"
-              >
-                Soy responsable de un centro
-              </a>
             </div>
           </div>
         </div>
