@@ -1,56 +1,107 @@
 'use client'
 
 import { createContext, useContext, useState, ReactNode } from 'react'
-import { centrosData, type CentroAcopio, type NecesidadUrgente, type Comentario, type Donacion } from './data'
+import type { CentroAcopio, NecesidadUrgente, Comentario, Donacion } from './data'
 
 interface StoreContextType {
   centros: CentroAcopio[]
-  agregarNecesidad: (centroId: string, nueva: NecesidadUrgente) => void
-  eliminarNecesidad: (centroId: string, necesidadId: string) => void
-  agregarComentario: (centroId: string, comentario: Comentario) => void
-  agregarDonacion: (centroId: string, donacion: Donacion) => void
+  agregarNecesidad: (centroId: string, nueva: Omit<NecesidadUrgente, 'id'>) => Promise<void>
+  eliminarNecesidad: (centroId: string, necesidadId: string) => Promise<void>
+  agregarComentario: (centroId: string, comentario: Omit<Comentario, 'id'>) => Promise<void>
+  agregarDonacion: (centroId: string, donacion: Omit<Donacion, 'id'>) => Promise<void>
 }
 
 const StoreContext = createContext<StoreContextType | null>(null)
 
-export function StoreProvider({ children }: { children: ReactNode }) {
-  const [centros, setCentros] = useState<CentroAcopio[]>(centrosData)
+export function StoreProvider({
+  children,
+  initialCentros,
+}: {
+  children: ReactNode
+  initialCentros: CentroAcopio[]
+}) {
+  const [centros, setCentros] = useState<CentroAcopio[]>(initialCentros)
 
-  function agregarNecesidad(centroId: string, nueva: NecesidadUrgente) {
-    setCentros(prev => prev.map(c =>
-      c.id === centroId
-        ? { ...c, necesidadesUrgentes: [nueva, ...c.necesidadesUrgentes] }
-        : c
-    ))
+  async function agregarNecesidad(centroId: string, nueva: Omit<NecesidadUrgente, 'id'>) {
+    const res = await fetch('/api/necesidades', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ centroId, ...nueva }),
+    })
+    const json = await res.json()
+    if (!res.ok) throw new Error(json.error)
+
+    const conId: NecesidadUrgente = {
+      ...nueva,
+      id: json.id,
+      fechaPublicacion: json.fecha_publicacion,
+    }
+    setCentros(prev =>
+      prev.map(c =>
+        c.id === centroId
+          ? { ...c, necesidadesUrgentes: [conId, ...c.necesidadesUrgentes] }
+          : c
+      )
+    )
   }
 
-  function eliminarNecesidad(centroId: string, necesidadId: string) {
-    setCentros(prev => prev.map(c =>
-      c.id === centroId
-        ? { ...c, necesidadesUrgentes: c.necesidadesUrgentes.filter(n => n.id !== necesidadId) }
-        : c
-    ))
+  async function eliminarNecesidad(centroId: string, necesidadId: string) {
+    const res = await fetch(`/api/necesidades/${necesidadId}`, { method: 'DELETE' })
+    if (!res.ok) throw new Error('Error al eliminar')
+
+    setCentros(prev =>
+      prev.map(c =>
+        c.id === centroId
+          ? { ...c, necesidadesUrgentes: c.necesidadesUrgentes.filter(n => n.id !== necesidadId) }
+          : c
+      )
+    )
   }
 
-  function agregarComentario(centroId: string, comentario: Comentario) {
-    setCentros(prev => prev.map(c => {
-      if (c.id !== centroId) return c
-      const nuevosComentarios = [comentario, ...c.comentarios]
-      const nuevoRating = nuevosComentarios.reduce((sum, cm) => sum + cm.estrellas, 0) / nuevosComentarios.length
-      return { ...c, comentarios: nuevosComentarios, totalComentarios: nuevosComentarios.length, rating: Math.round(nuevoRating * 10) / 10 }
-    }))
+  async function agregarComentario(centroId: string, comentario: Omit<Comentario, 'id'>) {
+    const res = await fetch('/api/comentarios', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ centroId, ...comentario }),
+    })
+    const json = await res.json()
+    if (!res.ok) throw new Error(json.error)
+
+    const conId: Comentario = { ...comentario, id: json.id, fecha: json.fecha }
+    setCentros(prev =>
+      prev.map(c => {
+        if (c.id !== centroId) return c
+        const nuevos = [conId, ...c.comentarios]
+        const nuevoRating =
+          Math.round(
+            (nuevos.reduce((s, cm) => s + cm.estrellas, 0) / nuevos.length) * 10
+          ) / 10
+        return { ...c, comentarios: nuevos, totalComentarios: nuevos.length, rating: nuevoRating }
+      })
+    )
   }
 
-  function agregarDonacion(centroId: string, donacion: Donacion) {
-    setCentros(prev => prev.map(c =>
-      c.id === centroId
-        ? { ...c, donaciones: [donacion, ...c.donaciones] }
-        : c
-    ))
+  async function agregarDonacion(centroId: string, donacion: Omit<Donacion, 'id'>) {
+    const res = await fetch('/api/donaciones', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ centroId, ...donacion }),
+    })
+    const json = await res.json()
+    if (!res.ok) throw new Error(json.error)
+
+    const conId: Donacion = { ...donacion, id: json.id, fecha: json.fecha }
+    setCentros(prev =>
+      prev.map(c =>
+        c.id === centroId ? { ...c, donaciones: [conId, ...c.donaciones] } : c
+      )
+    )
   }
 
   return (
-    <StoreContext.Provider value={{ centros, agregarNecesidad, eliminarNecesidad, agregarComentario, agregarDonacion }}>
+    <StoreContext.Provider
+      value={{ centros, agregarNecesidad, eliminarNecesidad, agregarComentario, agregarDonacion }}
+    >
       {children}
     </StoreContext.Provider>
   )

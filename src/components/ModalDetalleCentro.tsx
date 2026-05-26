@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import type { CentroAcopio, Comentario } from '@/lib/data'
+import type { CentroAcopio } from '@/lib/data'
 import { useStore } from '@/lib/store'
 
 interface Props {
@@ -39,7 +39,7 @@ export default function ModalDetalleCentro({ centro, onClose }: Props) {
   const [enviado, setEnviado] = useState(false)
   const [error, setError] = useState('')
 
-  function handleEnviarComentario(e: React.FormEvent) {
+  async function handleEnviarComentario(e: React.FormEvent) {
     e.preventDefault()
     setError('')
 
@@ -56,15 +56,12 @@ export default function ModalDetalleCentro({ centro, onClose }: Props) {
       return
     }
 
-    const nuevoComentario: Comentario = {
-      id: `cm-${Date.now()}`,
+    await agregarComentario(centro.id, {
       usuario: nombreUsuario.trim(),
       texto: texto.trim(),
       estrellas: estrellasSeleccionadas,
       fecha: new Date().toISOString(),
-    }
-
-    agregarComentario(centro.id, nuevoComentario)
+    })
     setEnviado(true)
   }
 

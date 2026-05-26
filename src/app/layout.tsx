@@ -1,17 +1,22 @@
 import type { Metadata } from 'next'
 import './globals.css'
 import Providers from '@/components/Providers'
+import { getCentros } from '@/lib/queries'
+
+export const dynamic = 'force-dynamic'
 
 export const metadata: Metadata = {
   title: 'Red de Acopio — Emergencias Chile',
   description: 'Plataforma de coordinación de centros de acopio para situaciones de emergencia.',
 }
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
+  const centros = await getCentros()
+
   return (
     <html lang="es">
       <body>
@@ -38,11 +43,13 @@ export default function RootLayout({
             {/* Sesión simulada — muestra como si estuvieras logueado */}
             <div className="flex items-center gap-3">
               <div className="hidden sm:flex flex-col items-end">
-                <span className="text-white text-sm font-medium">Centro de Acopio Sector Norte</span>
+                <span className="text-white text-sm font-medium">
+                  {centros[0]?.nombre ?? 'Centro de Acopio'}
+                </span>
                 <span className="text-blue-200 text-xs">Sesión activa · Administrador</span>
               </div>
               <div className="w-9 h-9 rounded-full bg-white bg-opacity-20 flex items-center justify-center text-white font-bold text-sm">
-                MG
+                {centros[0]?.administrador?.slice(0, 2).toUpperCase() ?? 'AD'}
               </div>
             </div>
           </div>
@@ -68,7 +75,7 @@ export default function RootLayout({
 
         {/* Contenido principal */}
         <main className="min-h-screen">
-          <Providers>{children}</Providers>
+          <Providers initialCentros={centros}>{children}</Providers>
         </main>
 
         {/* Footer institucional */}

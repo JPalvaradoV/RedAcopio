@@ -5,7 +5,7 @@ import type { Categoria, NecesidadUrgente } from '@/lib/data'
 
 interface Props {
   onClose: () => void
-  onGuardar: (necesidad: NecesidadUrgente) => void
+  onGuardar: (necesidad: Omit<NecesidadUrgente, 'id'>) => Promise<void>
 }
 
 const categorias: { value: Categoria; label: string; icon: string }[] = [
@@ -25,7 +25,7 @@ export default function ModalPedidoEmergencia({ onClose, onGuardar }: Props) {
   const [enviado, setEnviado] = useState(false)
   const [error, setError] = useState('')
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError('')
 
@@ -42,16 +42,13 @@ export default function ModalPedidoEmergencia({ onClose, onGuardar }: Props) {
       return
     }
 
-    const nueva: NecesidadUrgente = {
-      id: `n-${Date.now()}`,
+    await onGuardar({
       categoria: categoria as Categoria,
       descripcion: descripcion.trim(),
       cantidad: cantidad.trim(),
       urgencia,
       fechaPublicacion: new Date().toISOString(),
-    }
-
-    onGuardar(nueva)
+    })
     setEnviado(true)
   }
 

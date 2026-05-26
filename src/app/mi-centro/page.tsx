@@ -5,8 +5,6 @@ import { useStore } from '@/lib/store'
 import { type NecesidadUrgente } from '@/lib/data'
 import ModalPedidoEmergencia from '@/components/ModalPedidoEmergencia'
 
-const CENTRO_LOGUEADO_ID = 'c1'
-
 const categoriaLabel: Record<string, string> = {
   agua: '💧 Agua',
   alimentos: '🥫 Alimentos',
@@ -29,15 +27,17 @@ export default function MiCentroPage() {
   const { centros, agregarNecesidad, eliminarNecesidad } = useStore()
   const [showModal, setShowModal] = useState(false)
 
-  const centroLogueado = centros.find(c => c.id === CENTRO_LOGUEADO_ID)!
-  const necesidades = centroLogueado.necesidadesUrgentes
+  const centroLogueado = centros[0]
+  const necesidades = centroLogueado?.necesidadesUrgentes ?? []
 
-  function handleGuardar(nueva: NecesidadUrgente) {
-    agregarNecesidad(CENTRO_LOGUEADO_ID, nueva)
+  async function handleGuardar(nueva: Omit<NecesidadUrgente, 'id'>) {
+    if (!centroLogueado) return
+    await agregarNecesidad(centroLogueado.id, nueva)
   }
 
-  function handleEliminar(id: string) {
-    eliminarNecesidad(CENTRO_LOGUEADO_ID, id)
+  async function handleEliminar(id: string) {
+    if (!centroLogueado) return
+    await eliminarNecesidad(centroLogueado.id, id)
   }
 
   const urgentesAltas = necesidades.filter(n => n.urgencia === 'alta')
@@ -162,8 +162,8 @@ export default function MiCentroPage() {
       {showModal && (
         <ModalPedidoEmergencia
           onClose={() => setShowModal(false)}
-          onGuardar={(nueva) => {
-            handleGuardar(nueva)
+          onGuardar={async (nueva) => {
+            await handleGuardar(nueva)
             setShowModal(false)
           }}
         />

@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import type { CentroAcopio } from '@/lib/data'
+import { useStore } from '@/lib/store'
 
 interface Props {
   centro: CentroAcopio
@@ -9,12 +10,13 @@ interface Props {
 }
 
 export default function ModalDonacion({ centro, onClose }: Props) {
+  const { agregarDonacion } = useStore()
   const [nombre, setNombre] = useState('')
   const [monto, setMonto] = useState('')
   const [enviado, setEnviado] = useState(false)
   const [error, setError] = useState('')
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError('')
 
@@ -27,6 +29,11 @@ export default function ModalDonacion({ centro, onClose }: Props) {
       return
     }
 
+    await agregarDonacion(centro.id, {
+      donante: nombre.trim(),
+      monto: Number(monto),
+      fecha: new Date().toISOString(),
+    })
     setEnviado(true)
   }
 
