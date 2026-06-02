@@ -47,6 +47,16 @@ function transformCentro(row: Record<string, unknown>): CentroAcopio {
       monto: d.monto as number,
       fecha: d.fecha as string,
     })),
+    stock: (
+      (row.stock as Record<string, unknown>[] | null) ?? []
+    ).map((s) => ({
+      id: s.id as string,
+      categoria: s.categoria as string,
+      nombreItem: s.nombre_item as string,
+      cantidad: s.cantidad as number,
+      unidad: s.unidad as string,
+      updatedAt: s.updated_at as string,
+    })),
     rating,
     totalComentarios: comentarios.length,
   }
@@ -56,7 +66,7 @@ export async function getCentros(): Promise<CentroAcopio[]> {
   const supabase = await createSupabaseServerClient()
   const { data, error } = await supabase
     .from('centros')
-    .select(`*, necesidades_urgentes(*), comentarios(*), donaciones(*)`)
+    .select(`*, necesidades_urgentes(*), comentarios(*), donaciones(*), stock(*)`)
     .eq('activo', true)
     .order('created_at', { ascending: true })
 

@@ -1,9 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useStore } from '@/lib/store'
 import { useAuth } from '@/contexts/AuthContext'
-import { type NecesidadUrgente } from '@/lib/data'
+import { type NecesidadUrgente, type StockItem, type Voluntario } from '@/lib/data'
 import ModalPedidoEmergencia from '@/components/ModalPedidoEmergencia'
 
 const categoriaLabel: Record<string, string> = {
@@ -24,13 +24,46 @@ function formatFecha(iso: string) {
   return `${d.getDate()} de ${MESES[d.getMonth()]}, ${h}:${m}`
 }
 
+const CATEGORIAS_STOCK = ['agua', 'alimentos', 'ropa', 'medicamentos', 'higiene', 'herramientas', 'mobiliario', 'otro']
+const UNIDADES_STOCK = ['unidades', 'kg', 'litros', 'cajas', 'prendas', 'botellas', 'paquetes']
+
+const estadoBadge: Record<string, string> = {
+  pendiente: 'bg-yellow-100 text-yellow-800',
+  aprobado: 'bg-green-100 text-green-800',
+  rechazado: 'bg-red-100 text-red-800',
+}
+
 export default function MiCentroPage() {
-  const { centros, agregarNecesidad, eliminarNecesidad } = useStore()
+  const { centros, agregarNecesidad, eliminarNecesidad, agregarStock, eliminarStock } = useStore()
   const { id: userId, role } = useAuth()
   const [showModal, setShowModal] = useState(false)
 
   const centroLogueado = centros.find(c => c.adminId === userId)
   const necesidades = centroLogueado?.necesidadesUrgentes ?? []
+  const stockItems: StockItem[] = centroLogueado?.stock ?? []
+
+  // Stock form state
+  const [showStockForm, setShowStockForm] = useState(false)
+  const [stockCategoria, setStockCategoria] = useState('alimentos')
+  const [stockNombreItem, setStockNombreItem] = useState('')
+  const [stockCantidad, setStockCantidad] = useState(0)
+  const [stockUnidad, setStockUnidad] = useState('unidades')
+  const [stockLoading, setStockLoading] = useState(false)
+  const [stockError, setStockError] = useState('')
+
+  // Voluntarios state
+  const [voluntarios, setVoluntarios] = useState<Voluntario[]>([])
+  const [volLoading, setVolLoading] = useState(false)
+
+  useEffect(() => {
+    if (!centroLogueado) return
+    setVolLoading(true)
+    fetch(`/api/voluntarios?centroId=${centroLogueado.id}`)
+      .then(r => r.json())
+      .then(data => Array.isArray(data) ? setVoluntarios(data) : setVoluntarios([]))
+      .catch(() => setVoluntarios([]))
+      .finally(() => setVolLoading(false))
+  }, [centroLogueado?.id])
 
   if (role !== 'admin' || !centroLogueado) {
     return (
@@ -52,7 +85,48 @@ export default function MiCentroPage() {
     await eliminarNecesidad(centroLogueado.id, id)
   }
 
+  async function handleAgregarStock(e: React.FormEvent) {
+    e.preventDefault()
+    setStockError('')
+    if (!stockNombreItem.trim()) { setStockError('Ingresa el nombre del artículo.'); return }
+    if (stockCantidad <= 0) { setStockError('La cantidad debe ser mayor a 0.'); return }
+
+    setStockLoading(true)
+    try {
+      await agregarStock(centroLogueado.id, {
+        categoria: stockCategoria,
+        nombreItem: stockNombreItem.trim(),
+        cantidad: stockCantidad,
+        unidad: stockUnidad,
+      })
+      setStockNombreItem('')
+      setStockCantidad(0)
+      setShowStockForm(false)
+    } catch (err) {
+      setStockError(err instanceof Error ? err.message : 'Error al agregar item.')
+    } finally {
+      setStockLoading(false)
+    }
+  }
+
+  async function handleEliminarStock(stockId: string) {
+    if (!centroLogueado) return
+    await eliminarStock(centroLogueado.id, stockId)
+  }
+
+  async function handleCambiarEstadoVol(volId: string, estado: 'aprobado' | 'rechazado') {
+    const res = await fetch(`/api/voluntarios/${volId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ estado }),
+    })
+    if (res.ok) {
+      setVoluntarios(prev => prev.map(v => v.id === volId ? { ...v, estado } : v))
+    }
+  }
+
   const urgentesAltas = necesidades.filter(n => n.urgencia === 'alta')
+  const volPendientes = voluntarios.filter(v => v.estado === 'pendiente').length
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-8">
@@ -82,7 +156,6 @@ export default function MiCentroPage() {
           </p>
         </div>
 
-        {/* Historia 1: Botón principal de pedido de emergencia */}
         <button
           onClick={() => setShowModal(true)}
           className="shrink-0 bg-ch-red hover:bg-red-700 text-white font-bold py-3 px-5 rounded flex items-center gap-2 transition-colors text-sm"
@@ -102,19 +175,17 @@ export default function MiCentroPage() {
           <p className="text-xs text-ch-gray-text mt-0.5">Urgentes altas</p>
         </div>
         <div className="bg-white border border-gray-200 rounded-lg p-4 text-center">
-          <p className="text-2xl font-bold text-ch-blue">{centroLogueado.donaciones.length}</p>
-          <p className="text-xs text-ch-gray-text mt-0.5">Donaciones recibidas</p>
+          <p className="text-2xl font-bold text-ch-blue">{stockItems.length}</p>
+          <p className="text-xs text-ch-gray-text mt-0.5">Items en stock</p>
         </div>
-        <div className="bg-white border border-gray-200 rounded-lg p-4 text-center">
-          <p className="text-2xl font-bold text-ch-blue">
-            {centroLogueado.rating > 0 ? `${centroLogueado.rating}★` : '—'}
-          </p>
-          <p className="text-xs text-ch-gray-text mt-0.5">Calificación</p>
+        <div className="bg-white border border-yellow-200 rounded-lg p-4 text-center">
+          <p className="text-2xl font-bold text-yellow-600">{volPendientes}</p>
+          <p className="text-xs text-ch-gray-text mt-0.5">Voluntarios pendientes</p>
         </div>
       </div>
 
-      {/* Lista de necesidades/pedidos publicados */}
-      <section>
+      {/* Pedidos de emergencia */}
+      <section className="mb-8">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-bold text-ch-dark">Pedidos de emergencia publicados</h2>
           <button
@@ -170,7 +241,196 @@ export default function MiCentroPage() {
         )}
       </section>
 
-      {/* Modal Historia 1 */}
+      {/* Stock del centro */}
+      <section className="mb-8">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-bold text-ch-dark">📦 Stock del centro</h2>
+          <button
+            onClick={() => { setShowStockForm(true); setStockError('') }}
+            className="text-sm text-ch-blue font-semibold hover:underline"
+          >
+            + Agregar item
+          </button>
+        </div>
+
+        {showStockForm && (
+          <form onSubmit={handleAgregarStock} noValidate className="bg-white border border-ch-blue border-opacity-40 rounded-lg p-5 mb-4">
+            <p className="text-sm font-semibold text-ch-dark mb-3">Nuevo item de stock</p>
+            <div className="grid grid-cols-2 gap-3 mb-3">
+              <div>
+                <label className="block text-xs font-semibold text-ch-gray-text mb-1">Categoría</label>
+                <select
+                  value={stockCategoria}
+                  onChange={e => setStockCategoria(e.target.value)}
+                  className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-ch-blue"
+                >
+                  {CATEGORIAS_STOCK.map(c => (
+                    <option key={c} value={c}>{c.charAt(0).toUpperCase() + c.slice(1)}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-ch-gray-text mb-1">Artículo</label>
+                <input
+                  type="text"
+                  value={stockNombreItem}
+                  onChange={e => setStockNombreItem(e.target.value)}
+                  placeholder="Ej: Agua mineral 500ml"
+                  className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-ch-blue"
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3 mb-3">
+              <div>
+                <label className="block text-xs font-semibold text-ch-gray-text mb-1">Cantidad</label>
+                <input
+                  type="number"
+                  min={0}
+                  value={stockCantidad}
+                  onChange={e => setStockCantidad(Number(e.target.value))}
+                  className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-ch-blue"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-ch-gray-text mb-1">Unidad</label>
+                <select
+                  value={stockUnidad}
+                  onChange={e => setStockUnidad(e.target.value)}
+                  className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-ch-blue"
+                >
+                  {UNIDADES_STOCK.map(u => <option key={u} value={u}>{u}</option>)}
+                </select>
+              </div>
+            </div>
+            {stockError && (
+              <p className="text-ch-red text-xs bg-red-50 border border-red-100 rounded px-3 py-2 mb-3">⚠️ {stockError}</p>
+            )}
+            <div className="flex gap-2">
+              <button
+                type="submit"
+                disabled={stockLoading}
+                className="flex-1 bg-ch-blue hover:bg-ch-blue-hover text-white font-semibold text-sm py-2.5 rounded transition-colors disabled:opacity-60"
+              >
+                {stockLoading ? 'Guardando...' : 'Guardar item'}
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowStockForm(false)}
+                className="px-4 border border-gray-300 text-ch-gray-text text-sm rounded hover:bg-ch-gray transition-colors"
+              >
+                Cancelar
+              </button>
+            </div>
+          </form>
+        )}
+
+        {stockItems.length === 0 && !showStockForm ? (
+          <div className="bg-white border border-dashed border-gray-300 rounded-lg p-8 text-center text-ch-gray-text">
+            <p className="text-3xl mb-3">📦</p>
+            <p className="font-semibold text-ch-dark mb-1">Sin stock registrado</p>
+            <p className="text-sm mb-4">Registra el inventario disponible para que los donantes sepan qué traer.</p>
+            <button
+              onClick={() => setShowStockForm(true)}
+              className="bg-ch-blue hover:bg-ch-blue-hover text-white font-semibold text-sm py-2.5 px-5 rounded transition-colors"
+            >
+              + Agregar primer item
+            </button>
+          </div>
+        ) : stockItems.length > 0 && (
+          <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+            <table className="w-full text-sm">
+              <thead className="bg-ch-gray">
+                <tr className="text-ch-gray-text text-xs uppercase tracking-wide">
+                  <th className="text-left px-4 py-3 font-semibold">Categoría</th>
+                  <th className="text-left px-4 py-3 font-semibold">Artículo</th>
+                  <th className="text-right px-4 py-3 font-semibold">Cantidad</th>
+                  <th className="px-4 py-3"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {stockItems.map((s, i) => (
+                  <tr key={s.id} className={`border-t border-gray-100 ${i % 2 === 0 ? '' : 'bg-gray-50'}`}>
+                    <td className="px-4 py-3 text-ch-gray-text capitalize">{s.categoria}</td>
+                    <td className="px-4 py-3 font-medium text-ch-dark">{s.nombreItem}</td>
+                    <td className="px-4 py-3 text-right text-ch-dark">{s.cantidad} {s.unidad}</td>
+                    <td className="px-4 py-3 text-right">
+                      <button
+                        onClick={() => handleEliminarStock(s.id)}
+                        className="text-xs text-red-500 hover:text-red-700 border border-red-200 hover:border-red-400 px-2.5 py-1 rounded transition-colors"
+                      >
+                        Eliminar
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+
+      {/* Voluntarios */}
+      <section className="mb-8">
+        <h2 className="text-lg font-bold text-ch-dark mb-4">🤝 Voluntarios inscritos</h2>
+
+        {volLoading ? (
+          <div className="text-center py-8 text-ch-gray-text text-sm">Cargando voluntarios...</div>
+        ) : voluntarios.length === 0 ? (
+          <div className="bg-white border border-dashed border-gray-300 rounded-lg p-8 text-center text-ch-gray-text">
+            <p className="text-3xl mb-3">🤝</p>
+            <p className="font-semibold text-ch-dark mb-1">Sin voluntarios inscritos</p>
+            <p className="text-sm">Los usuarios que se inscriban desde la vista pública aparecerán aquí.</p>
+          </div>
+        ) : (
+          <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+            <table className="w-full text-sm">
+              <thead className="bg-ch-gray">
+                <tr className="text-ch-gray-text text-xs uppercase tracking-wide">
+                  <th className="text-left px-4 py-3 font-semibold">Nombre</th>
+                  <th className="text-left px-4 py-3 font-semibold">RUT / Pasaporte</th>
+                  <th className="text-left px-4 py-3 font-semibold">Disponibilidad</th>
+                  <th className="text-left px-4 py-3 font-semibold">Estado</th>
+                  <th className="px-4 py-3"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {voluntarios.map((v, i) => (
+                  <tr key={v.id} className={`border-t border-gray-100 ${i % 2 === 0 ? '' : 'bg-gray-50'}`}>
+                    <td className="px-4 py-3 font-medium text-ch-dark">{v.nombre}</td>
+                    <td className="px-4 py-3 text-ch-gray-text font-mono text-xs">{v.rut ?? '—'}</td>
+                    <td className="px-4 py-3 text-ch-gray-text">{v.disponibilidad ?? '—'}</td>
+                    <td className="px-4 py-3">
+                      <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${estadoBadge[v.estado]}`}>
+                        {v.estado.charAt(0).toUpperCase() + v.estado.slice(1)}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      {v.estado === 'pendiente' && (
+                        <div className="flex gap-1.5 justify-end">
+                          <button
+                            onClick={() => handleCambiarEstadoVol(v.id, 'aprobado')}
+                            className="text-xs bg-green-100 text-green-800 hover:bg-green-200 px-2.5 py-1 rounded transition-colors font-semibold"
+                          >
+                            Aprobar
+                          </button>
+                          <button
+                            onClick={() => handleCambiarEstadoVol(v.id, 'rechazado')}
+                            className="text-xs bg-red-100 text-red-700 hover:bg-red-200 px-2.5 py-1 rounded transition-colors font-semibold"
+                          >
+                            Rechazar
+                          </button>
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+
+      {/* Modal pedido emergencia */}
       {showModal && (
         <ModalPedidoEmergencia
           onClose={() => setShowModal(false)}

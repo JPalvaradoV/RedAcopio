@@ -33,7 +33,7 @@ export default function ModalDetalleCentro({ centro, onClose }: Props) {
   const comentarios = centro.comentarios
   const ratingPromedio = centro.rating
 
-  // Formulario de nuevo comentario
+  // Formulario comentario
   const [estrellaHover, setEstrellaHover] = useState(0)
   const [estrellasSeleccionadas, setEstrellasSeleccionadas] = useState(0)
   const [nombreUsuario, setNombreUsuario] = useState(user?.nombre ?? '')
@@ -41,22 +41,21 @@ export default function ModalDetalleCentro({ centro, onClose }: Props) {
   const [enviado, setEnviado] = useState(false)
   const [error, setError] = useState('')
 
+  // Formulario voluntario
+  const [showVolForm, setShowVolForm] = useState(false)
+  const [volNombre, setVolNombre] = useState(user?.nombre ?? '')
+  const [volRut, setVolRut] = useState('')
+  const [volDisponibilidad, setVolDisponibilidad] = useState('')
+  const [volEnviado, setVolEnviado] = useState(false)
+  const [volError, setVolError] = useState('')
+  const [volLoading, setVolLoading] = useState(false)
+
   async function handleEnviarComentario(e: React.FormEvent) {
     e.preventDefault()
     setError('')
-
-    if (estrellasSeleccionadas === 0) {
-      setError('Selecciona una puntuación de 1 a 5 estrellas.')
-      return
-    }
-    if (!nombreUsuario.trim()) {
-      setError('Ingresa tu nombre o apodo.')
-      return
-    }
-    if (texto.trim().length < 10) {
-      setError('El comentario debe tener al menos 10 caracteres.')
-      return
-    }
+    if (estrellasSeleccionadas === 0) { setError('Selecciona una puntuación de 1 a 5 estrellas.'); return }
+    if (!nombreUsuario.trim()) { setError('Ingresa tu nombre o apodo.'); return }
+    if (texto.trim().length < 10) { setError('El comentario debe tener al menos 10 caracteres.'); return }
 
     await agregarComentario(centro.id, {
       usuario: nombreUsuario.trim(),
@@ -76,6 +75,27 @@ export default function ModalDetalleCentro({ centro, onClose }: Props) {
     setError('')
   }
 
+  async function handleInscribirVoluntario(e: React.FormEvent) {
+    e.preventDefault()
+    setVolError('')
+    if (!volNombre.trim()) { setVolError('Ingresa tu nombre.'); return }
+
+    setVolLoading(true)
+    const res = await fetch('/api/voluntarios', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        centroId: centro.id,
+        nombre: volNombre.trim(),
+        rut: volRut.trim() || null,
+        disponibilidad: volDisponibilidad.trim() || null,
+      }),
+    })
+    const json = await res.json()
+    setVolLoading(false)
+    if (!res.ok) { setVolError(json.error ?? 'Error al inscribirse.'); return }
+    setVolEnviado(true)
+  }
 
   return (
     <div
@@ -136,7 +156,120 @@ export default function ModalDetalleCentro({ centro, onClose }: Props) {
             </section>
           )}
 
-          {/* ——— Historia 3: Comentarios y puntuación ——— */}
+          {/* Stock disponible */}
+          <section>
+            <h3 className="font-bold text-ch-dark mb-3 text-sm uppercase tracking-wide border-b border-gray-200 pb-2">
+              📦 Stock disponible
+            </h3>
+            {centro.stock.length === 0 ? (
+              <p className="text-sm text-ch-gray-text italic">Este centro no ha registrado su stock actual.</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm border-collapse">
+                  <thead>
+                    <tr className="bg-ch-gray text-ch-gray-text text-xs uppercase tracking-wide">
+                      <th className="text-left px-3 py-2 rounded-tl font-semibold">Categoría</th>
+                      <th className="text-left px-3 py-2 font-semibold">Artículo</th>
+                      <th className="text-right px-3 py-2 rounded-tr font-semibold">Cantidad</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {centro.stock.map((s, i) => (
+                      <tr key={s.id} className={i % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                        <td className="px-3 py-2 text-ch-gray-text capitalize">{s.categoria}</td>
+                        <td className="px-3 py-2 font-medium text-ch-dark">{s.nombreItem}</td>
+                        <td className="px-3 py-2 text-right text-ch-dark">{s.cantidad} {s.unidad}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </section>
+
+          {/* Voluntarios */}
+          <section>
+            <h3 className="font-bold text-ch-dark mb-3 text-sm uppercase tracking-wide border-b border-gray-200 pb-2">
+              🤝 Ser voluntario
+            </h3>
+            {!user ? (
+              <div className="border border-gray-200 rounded p-4 text-center">
+                <p className="text-ch-gray-text text-sm mb-3">Inicia sesión para inscribirte como voluntario en este centro.</p>
+                <a
+                  href="/auth/login"
+                  className="inline-block bg-ch-blue hover:bg-ch-blue-hover text-white font-semibold text-sm py-2 px-4 rounded transition-colors"
+                >
+                  Iniciar sesión
+                </a>
+              </div>
+            ) : volEnviado ? (
+              <div className="text-center border border-green-200 bg-green-50 rounded p-4">
+                <p className="text-green-800 font-semibold mb-1">✅ ¡Inscripción enviada!</p>
+                <p className="text-green-700 text-sm">El administrador del centro revisará tu solicitud.</p>
+              </div>
+            ) : !showVolForm ? (
+              <button
+                onClick={() => setShowVolForm(true)}
+                className="w-full border-2 border-dashed border-ch-blue text-ch-blue font-semibold text-sm py-3 rounded hover:bg-blue-50 transition-colors"
+              >
+                + Quiero ser voluntario en este centro
+              </button>
+            ) : (
+              <form onSubmit={handleInscribirVoluntario} noValidate className="border border-gray-200 rounded p-4 space-y-3">
+                <h4 className="font-semibold text-ch-dark text-sm">Inscripción como voluntario</h4>
+                <div>
+                  <label className="block text-sm text-ch-gray-text mb-1">Nombre completo <span className="text-ch-red">*</span></label>
+                  <input
+                    type="text"
+                    value={volNombre}
+                    onChange={e => setVolNombre(e.target.value)}
+                    className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-ch-blue focus:ring-1 focus:ring-ch-blue"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm text-ch-gray-text mb-1">RUT / Pasaporte</label>
+                  <input
+                    type="text"
+                    value={volRut}
+                    onChange={e => setVolRut(e.target.value)}
+                    placeholder="Ej: 12.345.678-9"
+                    className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-ch-blue focus:ring-1 focus:ring-ch-blue"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm text-ch-gray-text mb-1">Disponibilidad</label>
+                  <input
+                    type="text"
+                    value={volDisponibilidad}
+                    onChange={e => setVolDisponibilidad(e.target.value)}
+                    placeholder="Ej: Fines de semana, tardes"
+                    className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-ch-blue focus:ring-1 focus:ring-ch-blue"
+                  />
+                </div>
+                {volError && (
+                  <p className="text-ch-red text-xs bg-red-50 border border-red-100 rounded px-3 py-2">⚠️ {volError}</p>
+                )}
+                <div className="flex gap-2">
+                  <button
+                    type="submit"
+                    disabled={volLoading}
+                    className="flex-1 bg-ch-blue hover:bg-ch-blue-hover text-white font-semibold text-sm py-2.5 rounded transition-colors disabled:opacity-60"
+                  >
+                    {volLoading ? 'Enviando...' : 'Inscribirme'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowVolForm(false)}
+                    className="px-4 border border-gray-300 text-ch-gray-text text-sm rounded hover:bg-ch-gray transition-colors"
+                  >
+                    Cancelar
+                  </button>
+                </div>
+              </form>
+            )}
+          </section>
+
+          {/* Comentarios y puntuación */}
           <section>
             <div className="flex items-center justify-between border-b border-gray-200 pb-2 mb-3">
               <h3 className="font-bold text-ch-dark text-sm uppercase tracking-wide">

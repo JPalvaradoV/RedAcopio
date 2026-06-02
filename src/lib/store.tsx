@@ -1,7 +1,7 @@
 'use client'
 
 import { createContext, useContext, useState, ReactNode } from 'react'
-import type { CentroAcopio, NecesidadUrgente, Comentario, Donacion } from './data'
+import type { CentroAcopio, NecesidadUrgente, Comentario, Donacion, StockItem } from './data'
 
 interface StoreContextType {
   centros: CentroAcopio[]
@@ -9,6 +9,8 @@ interface StoreContextType {
   eliminarNecesidad: (centroId: string, necesidadId: string) => Promise<void>
   agregarComentario: (centroId: string, comentario: Omit<Comentario, 'id'>) => Promise<void>
   agregarDonacion: (centroId: string, donacion: Omit<Donacion, 'id'>) => Promise<void>
+  agregarStock: (centroId: string, item: Omit<StockItem, 'id' | 'updatedAt'>) => Promise<void>
+  eliminarStock: (centroId: string, stockId: string) => Promise<void>
 }
 
 const StoreContext = createContext<StoreContextType | null>(null)
@@ -98,9 +100,39 @@ export function StoreProvider({
     )
   }
 
+  async function agregarStock(centroId: string, item: Omit<StockItem, 'id' | 'updatedAt'>) {
+    const res = await fetch('/api/stock', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ centroId, ...item }),
+    })
+    const json = await res.json()
+    if (!res.ok) throw new Error(json.error)
+
+    const conId: StockItem = { ...item, id: json.id, updatedAt: json.updated_at }
+    setCentros(prev =>
+      prev.map(c =>
+        c.id === centroId ? { ...c, stock: [...c.stock, conId] } : c
+      )
+    )
+  }
+
+  async function eliminarStock(centroId: string, stockId: string) {
+    const res = await fetch(`/api/stock/${stockId}`, { method: 'DELETE' })
+    if (!res.ok) throw new Error('Error al eliminar item de stock')
+
+    setCentros(prev =>
+      prev.map(c =>
+        c.id === centroId
+          ? { ...c, stock: c.stock.filter(s => s.id !== stockId) }
+          : c
+      )
+    )
+  }
+
   return (
     <StoreContext.Provider
-      value={{ centros, agregarNecesidad, eliminarNecesidad, agregarComentario, agregarDonacion }}
+      value={{ centros, agregarNecesidad, eliminarNecesidad, agregarComentario, agregarDonacion, agregarStock, eliminarStock }}
     >
       {children}
     </StoreContext.Provider>

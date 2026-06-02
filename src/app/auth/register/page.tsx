@@ -12,6 +12,7 @@ export default function RegisterPage() {
 
   // Datos personales
   const [nombre, setNombre] = useState('')
+  const [rut, setRut] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
 
@@ -53,7 +54,7 @@ export default function RegisterPage() {
 
     const { error: profileError } = await supabaseBrowser
       .from('profiles')
-      .insert({ id: userId, nombre: nombre.trim(), role })
+      .insert({ id: userId, nombre: nombre.trim(), role, rut: rut.trim() || null })
 
     if (profileError) {
       setError(`Error al guardar el perfil: ${profileError.message}`)
@@ -143,6 +144,18 @@ export default function RegisterPage() {
                     value={nombre}
                     onChange={e => setNombre(e.target.value)}
                     placeholder="Ej: María González"
+                    className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-ch-blue focus:ring-1 focus:ring-ch-blue"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-ch-dark mb-1">
+                    RUT <span className="text-ch-gray-text font-normal">(opcional)</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={rut}
+                    onChange={e => setRut(e.target.value)}
+                    placeholder="Ej: 12.345.678-9"
                     className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-ch-blue focus:ring-1 focus:ring-ch-blue"
                   />
                 </div>

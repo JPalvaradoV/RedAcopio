@@ -24,6 +24,25 @@ export interface Donacion {
   fecha: string
 }
 
+export interface StockItem {
+  id: string
+  categoria: string
+  nombreItem: string
+  cantidad: number
+  unidad: string
+  updatedAt: string
+}
+
+export interface Voluntario {
+  id: string
+  user_id: string | null
+  nombre: string
+  rut: string | null
+  disponibilidad: string | null
+  estado: 'pendiente' | 'aprobado' | 'rechazado'
+  created_at: string
+}
+
 export interface CentroAcopio {
   id: string
   nombre: string
@@ -37,6 +56,7 @@ export interface CentroAcopio {
   necesidadesUrgentes: NecesidadUrgente[]
   comentarios: Comentario[]
   donaciones: Donacion[]
+  stock: StockItem[]
   rating: number
   totalComentarios: number
   activo: boolean
