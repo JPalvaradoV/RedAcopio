@@ -38,6 +38,7 @@ export interface Voluntario {
   user_id: string | null
   nombre: string
   rut: string | null
+  email: string | null
   disponibilidad: string | null
   estado: 'pendiente' | 'aprobado' | 'rechazado'
   created_at: string

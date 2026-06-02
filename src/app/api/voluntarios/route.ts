@@ -8,6 +8,18 @@ export async function POST(req: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Debes iniciar sesión para inscribirte.' }, { status: 401 })
 
+  const admin = createSupabaseAdminClient()
+
+  // Verificar si ya está inscrito como voluntario en cualquier centro
+  const { count } = await admin
+    .from('voluntarios')
+    .select('*', { count: 'exact', head: true })
+    .eq('user_id', user.id)
+
+  if (count && count > 0) {
+    return NextResponse.json({ error: 'YA_VOLUNTARIO' }, { status: 409 })
+  }
+
   const body = await req.json()
   const { centroId, nombre, disponibilidad } = body
 
@@ -18,8 +30,6 @@ export async function POST(req: NextRequest) {
     .eq('id', user.id)
     .single()
 
-  // Usar cliente admin para bypassear RLS en el INSERT (auth ya validada arriba)
-  const admin = createSupabaseAdminClient()
   const { data, error } = await admin
     .from('voluntarios')
     .insert({
@@ -27,6 +37,7 @@ export async function POST(req: NextRequest) {
       user_id: user.id,
       nombre,
       rut: profile?.rut ?? null,
+      email: user.email ?? null,
       disponibilidad: disponibilidad || null,
       estado: 'pendiente',
     })

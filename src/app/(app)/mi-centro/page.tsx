@@ -446,7 +446,8 @@ export default function MiCentroPage() {
               <thead className="bg-ch-gray">
                 <tr className="text-ch-gray-text text-xs uppercase tracking-wide">
                   <th className="text-left px-4 py-3 font-semibold">Nombre</th>
-                  <th className="text-left px-4 py-3 font-semibold">RUT / Pasaporte</th>
+                  <th className="text-left px-4 py-3 font-semibold">RUT</th>
+                  <th className="text-left px-4 py-3 font-semibold">Correo</th>
                   <th className="text-left px-4 py-3 font-semibold">Disponibilidad</th>
                   <th className="text-left px-4 py-3 font-semibold">Estado</th>
                   <th className="px-4 py-3"></th>
@@ -457,6 +458,7 @@ export default function MiCentroPage() {
                   <tr key={v.id} className={`border-t border-gray-100 ${i % 2 === 0 ? '' : 'bg-gray-50'}`}>
                     <td className="px-4 py-3 font-medium text-ch-dark">{v.nombre}</td>
                     <td className="px-4 py-3 text-ch-gray-text font-mono text-xs">{v.rut ?? '—'}</td>
+                    <td className="px-4 py-3 text-ch-gray-text text-xs">{v.email ?? '—'}</td>
                     <td className="px-4 py-3 text-ch-gray-text">{v.disponibilidad ?? '—'}</td>
                     <td className="px-4 py-3">
                       <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${estadoBadge[v.estado]}`}>

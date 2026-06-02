@@ -50,6 +50,7 @@ export default function ModalDetalleCentro({ centro, onClose }: Props) {
   const [volEnviado, setVolEnviado] = useState(false)
   const [volError, setVolError] = useState('')
   const [volLoading, setVolLoading] = useState(false)
+  const [yaEsVoluntario, setYaEsVoluntario] = useState(false)
 
   function toggleDia(dia: string) {
     setDiasSeleccionados(prev =>
@@ -101,6 +102,11 @@ export default function ModalDetalleCentro({ centro, onClose }: Props) {
     })
     const json = await res.json()
     setVolLoading(false)
+    if (res.status === 409 && json.error === 'YA_VOLUNTARIO') {
+      setShowVolForm(false)
+      setYaEsVoluntario(true)
+      return
+    }
     if (!res.ok) { setVolError(json.error ?? 'Error al inscribirse.'); return }
     setVolEnviado(true)
   }
@@ -209,6 +215,11 @@ export default function ModalDetalleCentro({ centro, onClose }: Props) {
                 >
                   Iniciar sesión
                 </a>
+              </div>
+            ) : yaEsVoluntario ? (
+              <div className="border border-yellow-200 bg-yellow-50 rounded p-4 text-center">
+                <p className="text-yellow-800 font-semibold mb-1">Ya eres voluntario</p>
+                <p className="text-yellow-700 text-sm">Solo puedes inscribirte como voluntario en un centro a la vez.</p>
               </div>
             ) : volEnviado ? (
               <div className="text-center border border-green-200 bg-green-50 rounded p-4">
