@@ -88,6 +88,7 @@ export default function MiCentroPage() {
   async function handleAgregarStock(e: React.FormEvent) {
     e.preventDefault()
     setStockError('')
+    if (!centroLogueado) return
     if (!stockNombreItem.trim()) { setStockError('Ingresa el nombre del artículo.'); return }
     if (stockCantidad <= 0) { setStockError('La cantidad debe ser mayor a 0.'); return }
 
