@@ -46,7 +46,6 @@ export default function ModalDetalleCentro({ centro, onClose }: Props) {
   // Formulario voluntario
   const [showVolForm, setShowVolForm] = useState(false)
   const [volNombre, setVolNombre] = useState(user?.nombre ?? '')
-  const [volRut, setVolRut] = useState('')
   const [diasSeleccionados, setDiasSeleccionados] = useState<string[]>([])
   const [volEnviado, setVolEnviado] = useState(false)
   const [volError, setVolError] = useState('')
@@ -97,7 +96,6 @@ export default function ModalDetalleCentro({ centro, onClose }: Props) {
       body: JSON.stringify({
         centroId: centro.id,
         nombre: volNombre.trim(),
-        rut: volRut.trim() || null,
         disponibilidad,
       }),
     })
@@ -234,17 +232,6 @@ export default function ModalDetalleCentro({ centro, onClose }: Props) {
                     type="text"
                     value={volNombre}
                     onChange={e => setVolNombre(e.target.value)}
-                    className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-ch-blue focus:ring-1 focus:ring-ch-blue"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm text-ch-gray-text mb-1">RUT / Pasaporte</label>
-                  <input
-                    type="text"
-                    value={volRut}
-                    onChange={e => setVolRut(e.target.value)}
-                    placeholder="Ej: 12.345.678-9"
                     className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-ch-blue focus:ring-1 focus:ring-ch-blue"
                   />
                 </div>

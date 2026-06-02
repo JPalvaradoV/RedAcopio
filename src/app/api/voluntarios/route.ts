@@ -9,7 +9,14 @@ export async function POST(req: NextRequest) {
   if (!user) return NextResponse.json({ error: 'Debes iniciar sesión para inscribirte.' }, { status: 401 })
 
   const body = await req.json()
-  const { centroId, nombre, rut, disponibilidad } = body
+  const { centroId, nombre, disponibilidad } = body
+
+  // Obtener RUT del perfil del usuario autenticado
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('rut')
+    .eq('id', user.id)
+    .single()
 
   // Usar cliente admin para bypassear RLS en el INSERT (auth ya validada arriba)
   const admin = createSupabaseAdminClient()
@@ -19,7 +26,7 @@ export async function POST(req: NextRequest) {
       centro_id: centroId,
       user_id: user.id,
       nombre,
-      rut: rut || null,
+      rut: profile?.rut ?? null,
       disponibilidad: disponibilidad || null,
       estado: 'pendiente',
     })
