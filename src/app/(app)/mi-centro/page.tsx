@@ -34,7 +34,7 @@ const estadoBadge: Record<string, string> = {
 }
 
 export default function MiCentroPage() {
-  const { centros, agregarNecesidad, eliminarNecesidad, agregarStock, eliminarStock } = useStore()
+  const { centros, agregarNecesidad, eliminarNecesidad, agregarStock, actualizarStock, eliminarStock } = useStore()
   const { id: userId, role } = useAuth()
   const [showModal, setShowModal] = useState(false)
 
@@ -50,6 +50,11 @@ export default function MiCentroPage() {
   const [stockUnidad, setStockUnidad] = useState('unidades')
   const [stockLoading, setStockLoading] = useState(false)
   const [stockError, setStockError] = useState('')
+
+  // Stock edición de cantidad
+  const [editingStockId, setEditingStockId] = useState<string | null>(null)
+  const [editCantidad, setEditCantidad] = useState(0)
+  const [editLoading, setEditLoading] = useState(false)
 
   // Voluntarios state
   const [voluntarios, setVoluntarios] = useState<Voluntario[]>([])
@@ -113,6 +118,17 @@ export default function MiCentroPage() {
   async function handleEliminarStock(stockId: string) {
     if (!centroLogueado) return
     await eliminarStock(centroLogueado.id, stockId)
+  }
+
+  async function handleGuardarCantidad(stockId: string) {
+    if (!centroLogueado) return
+    setEditLoading(true)
+    try {
+      await actualizarStock(centroLogueado.id, stockId, editCantidad)
+      setEditingStockId(null)
+    } finally {
+      setEditLoading(false)
+    }
   }
 
   async function handleCambiarEstadoVol(volId: string, estado: 'aprobado' | 'rechazado') {
@@ -353,14 +369,56 @@ export default function MiCentroPage() {
                   <tr key={s.id} className={`border-t border-gray-100 ${i % 2 === 0 ? '' : 'bg-gray-50'}`}>
                     <td className="px-4 py-3 text-ch-gray-text capitalize">{s.categoria}</td>
                     <td className="px-4 py-3 font-medium text-ch-dark">{s.nombreItem}</td>
-                    <td className="px-4 py-3 text-right text-ch-dark">{s.cantidad} {s.unidad}</td>
+                    <td className="px-4 py-3 text-right text-ch-dark">
+                      {editingStockId === s.id ? (
+                        <div className="flex items-center justify-end gap-1">
+                          <input
+                            type="number"
+                            min={0}
+                            value={editCantidad}
+                            onChange={e => setEditCantidad(Number(e.target.value))}
+                            className="w-20 border border-ch-blue rounded px-2 py-1 text-sm text-right focus:outline-none focus:ring-1 focus:ring-ch-blue"
+                            autoFocus
+                          />
+                          <span className="text-ch-gray-text text-xs">{s.unidad}</span>
+                        </div>
+                      ) : (
+                        <span>{s.cantidad} {s.unidad}</span>
+                      )}
+                    </td>
                     <td className="px-4 py-3 text-right">
-                      <button
-                        onClick={() => handleEliminarStock(s.id)}
-                        className="text-xs text-red-500 hover:text-red-700 border border-red-200 hover:border-red-400 px-2.5 py-1 rounded transition-colors"
-                      >
-                        Eliminar
-                      </button>
+                      {editingStockId === s.id ? (
+                        <div className="flex gap-1 justify-end">
+                          <button
+                            onClick={() => handleGuardarCantidad(s.id)}
+                            disabled={editLoading}
+                            className="text-xs bg-green-100 text-green-800 hover:bg-green-200 px-2.5 py-1 rounded font-semibold transition-colors disabled:opacity-60"
+                          >
+                            {editLoading ? '...' : 'Guardar'}
+                          </button>
+                          <button
+                            onClick={() => setEditingStockId(null)}
+                            className="text-xs border border-gray-300 text-ch-gray-text px-2.5 py-1 rounded hover:bg-ch-gray transition-colors"
+                          >
+                            Cancelar
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="flex gap-1 justify-end">
+                          <button
+                            onClick={() => { setEditingStockId(s.id); setEditCantidad(s.cantidad) }}
+                            className="text-xs text-ch-blue hover:text-ch-blue-hover border border-blue-200 hover:border-ch-blue px-2.5 py-1 rounded transition-colors"
+                          >
+                            Ajustar
+                          </button>
+                          <button
+                            onClick={() => handleEliminarStock(s.id)}
+                            className="text-xs text-red-500 hover:text-red-700 border border-red-200 hover:border-red-400 px-2.5 py-1 rounded transition-colors"
+                          >
+                            Eliminar
+                          </button>
+                        </div>
+                      )}
                     </td>
                   </tr>
                 ))}

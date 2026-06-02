@@ -4,6 +4,8 @@ import { createSupabaseServerClient } from '@/lib/supabase-server'
 export async function POST(req: NextRequest) {
   const supabase = await createSupabaseServerClient()
   const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Debes iniciar sesión para inscribirte.' }, { status: 401 })
+
   const body = await req.json()
   const { centroId, nombre, rut, disponibilidad } = body
 
@@ -11,7 +13,7 @@ export async function POST(req: NextRequest) {
     .from('voluntarios')
     .insert({
       centro_id: centroId,
-      user_id: user?.id ?? null,
+      user_id: user.id,
       nombre,
       rut: rut || null,
       disponibilidad: disponibilidad || null,

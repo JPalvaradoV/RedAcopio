@@ -10,6 +10,7 @@ interface StoreContextType {
   agregarComentario: (centroId: string, comentario: Omit<Comentario, 'id'>) => Promise<void>
   agregarDonacion: (centroId: string, donacion: Omit<Donacion, 'id'>) => Promise<void>
   agregarStock: (centroId: string, item: Omit<StockItem, 'id' | 'updatedAt'>) => Promise<void>
+  actualizarStock: (centroId: string, stockId: string, cantidad: number) => Promise<void>
   eliminarStock: (centroId: string, stockId: string) => Promise<void>
 }
 
@@ -117,6 +118,25 @@ export function StoreProvider({
     )
   }
 
+  async function actualizarStock(centroId: string, stockId: string, cantidad: number) {
+    const res = await fetch(`/api/stock/${stockId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ cantidad }),
+    })
+    if (!res.ok) {
+      const json = await res.json()
+      throw new Error(json.error)
+    }
+    setCentros(prev =>
+      prev.map(c =>
+        c.id === centroId
+          ? { ...c, stock: c.stock.map(s => s.id === stockId ? { ...s, cantidad } : s) }
+          : c
+      )
+    )
+  }
+
   async function eliminarStock(centroId: string, stockId: string) {
     const res = await fetch(`/api/stock/${stockId}`, { method: 'DELETE' })
     if (!res.ok) throw new Error('Error al eliminar item de stock')
@@ -132,7 +152,7 @@ export function StoreProvider({
 
   return (
     <StoreContext.Provider
-      value={{ centros, agregarNecesidad, eliminarNecesidad, agregarComentario, agregarDonacion, agregarStock, eliminarStock }}
+      value={{ centros, agregarNecesidad, eliminarNecesidad, agregarComentario, agregarDonacion, agregarStock, actualizarStock, eliminarStock }}
     >
       {children}
     </StoreContext.Provider>

@@ -19,6 +19,8 @@ const categoriaLabel: Record<string, string> = {
   herramientas: '🔧 Herramientas',
 }
 
+const DIAS_SEMANA = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
+
 const MESES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre']
 
 function formatFecha(iso: string) {
@@ -45,10 +47,16 @@ export default function ModalDetalleCentro({ centro, onClose }: Props) {
   const [showVolForm, setShowVolForm] = useState(false)
   const [volNombre, setVolNombre] = useState(user?.nombre ?? '')
   const [volRut, setVolRut] = useState('')
-  const [volDisponibilidad, setVolDisponibilidad] = useState('')
+  const [diasSeleccionados, setDiasSeleccionados] = useState<string[]>([])
   const [volEnviado, setVolEnviado] = useState(false)
   const [volError, setVolError] = useState('')
   const [volLoading, setVolLoading] = useState(false)
+
+  function toggleDia(dia: string) {
+    setDiasSeleccionados(prev =>
+      prev.includes(dia) ? prev.filter(d => d !== dia) : [...prev, dia]
+    )
+  }
 
   async function handleEnviarComentario(e: React.FormEvent) {
     e.preventDefault()
@@ -80,6 +88,8 @@ export default function ModalDetalleCentro({ centro, onClose }: Props) {
     setVolError('')
     if (!volNombre.trim()) { setVolError('Ingresa tu nombre.'); return }
 
+    const disponibilidad = diasSeleccionados.length > 0 ? diasSeleccionados.join(', ') : null
+
     setVolLoading(true)
     const res = await fetch('/api/voluntarios', {
       method: 'POST',
@@ -88,7 +98,7 @@ export default function ModalDetalleCentro({ centro, onClose }: Props) {
         centroId: centro.id,
         nombre: volNombre.trim(),
         rut: volRut.trim() || null,
-        disponibilidad: volDisponibilidad.trim() || null,
+        disponibilidad,
       }),
     })
     const json = await res.json()
@@ -217,6 +227,7 @@ export default function ModalDetalleCentro({ centro, onClose }: Props) {
             ) : (
               <form onSubmit={handleInscribirVoluntario} noValidate className="border border-gray-200 rounded p-4 space-y-3">
                 <h4 className="font-semibold text-ch-dark text-sm">Inscripción como voluntario</h4>
+
                 <div>
                   <label className="block text-sm text-ch-gray-text mb-1">Nombre completo <span className="text-ch-red">*</span></label>
                   <input
@@ -226,6 +237,7 @@ export default function ModalDetalleCentro({ centro, onClose }: Props) {
                     className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-ch-blue focus:ring-1 focus:ring-ch-blue"
                   />
                 </div>
+
                 <div>
                   <label className="block text-sm text-ch-gray-text mb-1">RUT / Pasaporte</label>
                   <input
@@ -236,19 +248,34 @@ export default function ModalDetalleCentro({ centro, onClose }: Props) {
                     className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-ch-blue focus:ring-1 focus:ring-ch-blue"
                   />
                 </div>
+
                 <div>
-                  <label className="block text-sm text-ch-gray-text mb-1">Disponibilidad</label>
-                  <input
-                    type="text"
-                    value={volDisponibilidad}
-                    onChange={e => setVolDisponibilidad(e.target.value)}
-                    placeholder="Ej: Fines de semana, tardes"
-                    className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-ch-blue focus:ring-1 focus:ring-ch-blue"
-                  />
+                  <label className="block text-sm text-ch-gray-text mb-2">Días disponibles</label>
+                  <div className="grid grid-cols-4 gap-1.5">
+                    {DIAS_SEMANA.map(dia => (
+                      <button
+                        key={dia}
+                        type="button"
+                        onClick={() => toggleDia(dia)}
+                        className={`text-xs py-1.5 px-1 rounded border font-medium transition-colors ${
+                          diasSeleccionados.includes(dia)
+                            ? 'bg-ch-blue border-ch-blue text-white'
+                            : 'border-gray-300 text-ch-gray-text hover:border-ch-blue'
+                        }`}
+                      >
+                        {dia.slice(0, 3)}
+                      </button>
+                    ))}
+                  </div>
+                  {diasSeleccionados.length > 0 && (
+                    <p className="text-xs text-ch-gray-text mt-1.5">{diasSeleccionados.join(', ')}</p>
+                  )}
                 </div>
+
                 {volError && (
                   <p className="text-ch-red text-xs bg-red-50 border border-red-100 rounded px-3 py-2">⚠️ {volError}</p>
                 )}
+
                 <div className="flex gap-2">
                   <button
                     type="submit"
@@ -288,7 +315,6 @@ export default function ModalDetalleCentro({ centro, onClose }: Props) {
               </div>
             </div>
 
-            {/* Lista de comentarios */}
             {comentarios.length === 0 ? (
               <p className="text-sm text-ch-gray-text italic mb-4">
                 Aún no hay comentarios. ¡Sé el primero en calificar este centro!
@@ -314,23 +340,16 @@ export default function ModalDetalleCentro({ centro, onClose }: Props) {
               </ul>
             )}
 
-            {/* Formulario de nuevo comentario */}
             {!user ? (
               <div className="border border-gray-200 rounded p-4 text-center">
                 <p className="text-2xl mb-2">🔒</p>
                 <p className="font-semibold text-ch-dark text-sm mb-1">Inicia sesión para comentar</p>
                 <p className="text-ch-gray-text text-xs mb-4">Comparte tu experiencia con este centro.</p>
                 <div className="flex gap-2">
-                  <a
-                    href="/auth/login"
-                    className="flex-1 bg-ch-blue hover:bg-ch-blue-hover text-white font-semibold text-sm py-2 rounded transition-colors text-center"
-                  >
+                  <a href="/auth/login" className="flex-1 bg-ch-blue hover:bg-ch-blue-hover text-white font-semibold text-sm py-2 rounded transition-colors text-center">
                     Iniciar sesión
                   </a>
-                  <a
-                    href="/auth/register"
-                    className="flex-1 border border-ch-blue text-ch-blue hover:bg-ch-gray font-semibold text-sm py-2 rounded transition-colors text-center"
-                  >
+                  <a href="/auth/register" className="flex-1 border border-ch-blue text-ch-blue hover:bg-ch-gray font-semibold text-sm py-2 rounded transition-colors text-center">
                     Crear cuenta
                   </a>
                 </div>
@@ -339,7 +358,6 @@ export default function ModalDetalleCentro({ centro, onClose }: Props) {
               <form onSubmit={handleEnviarComentario} noValidate className="border border-gray-200 rounded p-4">
                 <h4 className="font-semibold text-ch-dark text-sm mb-3">Dejar un comentario</h4>
 
-                {/* Estrellas interactivas */}
                 <div className="mb-3">
                   <label className="block text-sm text-ch-gray-text mb-1.5">
                     Tu puntuación <span className="text-ch-red">*</span>
@@ -349,11 +367,7 @@ export default function ModalDetalleCentro({ centro, onClose }: Props) {
                       <button
                         key={n}
                         type="button"
-                        className={`star text-3xl leading-none ${
-                          n <= (estrellaHover || estrellasSeleccionadas)
-                            ? 'text-yellow-400'
-                            : 'text-gray-300'
-                        }`}
+                        className={`star text-3xl leading-none ${n <= (estrellaHover || estrellasSeleccionadas) ? 'text-yellow-400' : 'text-gray-300'}`}
                         onMouseEnter={() => setEstrellaHover(n)}
                         onMouseLeave={() => setEstrellaHover(0)}
                         onClick={() => setEstrellasSeleccionadas(n)}
@@ -370,7 +384,6 @@ export default function ModalDetalleCentro({ centro, onClose }: Props) {
                   </div>
                 </div>
 
-                {/* Nombre */}
                 <div className="mb-3">
                   <label className="block text-sm text-ch-gray-text mb-1" htmlFor="nombre-comentario">
                     Tu nombre <span className="text-ch-red">*</span>
@@ -385,7 +398,6 @@ export default function ModalDetalleCentro({ centro, onClose }: Props) {
                   />
                 </div>
 
-                {/* Texto */}
                 <div className="mb-3">
                   <label className="block text-sm text-ch-gray-text mb-1" htmlFor="texto-comentario">
                     Comentario <span className="text-ch-red">*</span>
@@ -406,10 +418,7 @@ export default function ModalDetalleCentro({ centro, onClose }: Props) {
                   </p>
                 )}
 
-                <button
-                  type="submit"
-                  className="w-full bg-ch-blue hover:bg-ch-blue-hover text-white font-semibold text-sm py-2.5 rounded transition-colors"
-                >
+                <button type="submit" className="w-full bg-ch-blue hover:bg-ch-blue-hover text-white font-semibold text-sm py-2.5 rounded transition-colors">
                   Publicar comentario
                 </button>
               </form>
@@ -417,10 +426,7 @@ export default function ModalDetalleCentro({ centro, onClose }: Props) {
               <div className="text-center border border-green-200 bg-green-50 rounded p-4">
                 <p className="text-green-800 font-semibold mb-1">✅ ¡Comentario publicado!</p>
                 <p className="text-green-700 text-sm mb-3">Tu opinión ya es visible en la parte superior.</p>
-                <button
-                  onClick={resetForm}
-                  className="text-ch-blue text-sm font-medium hover:underline"
-                >
+                <button onClick={resetForm} className="text-ch-blue text-sm font-medium hover:underline">
                   Agregar otro comentario
                 </button>
               </div>

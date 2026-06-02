@@ -29,8 +29,11 @@ export default function RegisterPage() {
     e.preventDefault()
     setError('')
 
+    const rutRegex = /^\d{1,2}\.\d{3}\.\d{3}-[\dkK]$/
     if (!role) { setError('Selecciona un tipo de cuenta.'); return }
     if (!nombre.trim()) { setError('Ingresa tu nombre completo.'); return }
+    if (!rut.trim()) { setError('Ingresa tu RUT.'); return }
+    if (!rutRegex.test(rut.trim())) { setError('El RUT debe tener el formato XX.XXX.XXX-X (ej: 12.345.678-9).'); return }
     if (password.length < 6) { setError('La contraseña debe tener al menos 6 caracteres.'); return }
     if (role === 'admin') {
       if (!centroNombre.trim()) { setError('Ingresa el nombre del centro.'); return }
@@ -149,7 +152,7 @@ export default function RegisterPage() {
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-ch-dark mb-1">
-                    RUT <span className="text-ch-gray-text font-normal">(opcional)</span>
+                    RUT <span className="text-ch-red">*</span>
                   </label>
                   <input
                     type="text"
@@ -158,6 +161,7 @@ export default function RegisterPage() {
                     placeholder="Ej: 12.345.678-9"
                     className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-ch-blue focus:ring-1 focus:ring-ch-blue"
                   />
+                  <p className="text-xs text-ch-gray-text mt-0.5">Formato: 12.345.678-9</p>
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-ch-dark mb-1">
