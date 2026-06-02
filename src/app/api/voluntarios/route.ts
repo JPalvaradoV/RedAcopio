@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createSupabaseServerClient } from '@/lib/supabase-server'
+import { createSupabaseAdminClient } from '@/lib/supabase-admin'
 
 export async function POST(req: NextRequest) {
+  // Validar auth con cliente normal
   const supabase = await createSupabaseServerClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Debes iniciar sesión para inscribirte.' }, { status: 401 })
@@ -9,7 +11,9 @@ export async function POST(req: NextRequest) {
   const body = await req.json()
   const { centroId, nombre, rut, disponibilidad } = body
 
-  const { data, error } = await supabase
+  // Usar cliente admin para bypassear RLS en el INSERT (auth ya validada arriba)
+  const admin = createSupabaseAdminClient()
+  const { data, error } = await admin
     .from('voluntarios')
     .insert({
       centro_id: centroId,
