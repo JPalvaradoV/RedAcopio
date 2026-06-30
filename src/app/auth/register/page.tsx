@@ -1,7 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { supabaseBrowser } from '@/lib/supabase-browser'
+import { NOMBRES_REGIONES, getComunasByRegion } from '@/lib/chile-geo'
 
 type Role = 'usuario' | 'admin'
 
@@ -9,6 +10,7 @@ export default function RegisterPage() {
   const [role, setRole] = useState<Role | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [centroEnviado, setCentroEnviado] = useState(false)
 
   // Datos personales
   const [nombre, setNombre] = useState('')
@@ -25,6 +27,13 @@ export default function RegisterPage() {
   const [centroEmail, setCentroEmail] = useState('')
   const [centroDesc, setCentroDesc] = useState('')
 
+  const comunasDisponibles = useMemo(() => getComunasByRegion(centroRegion), [centroRegion])
+
+  function handleCambiarRegion(nueva: string) {
+    setCentroRegion(nueva)
+    setCentroComuna('')
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError('')
@@ -38,57 +47,86 @@ export default function RegisterPage() {
     if (role === 'admin') {
       if (!centroNombre.trim()) { setError('Ingresa el nombre del centro.'); return }
       if (!centroDir.trim()) { setError('Ingresa la dirección del centro.'); return }
-      if (!centroComuna.trim()) { setError('Ingresa la comuna del centro.'); return }
-      if (!centroRegion.trim()) { setError('Ingresa la región del centro.'); return }
+      if (!centroRegion) { setError('Selecciona la región del centro.'); return }
+      if (!centroComuna) { setError('Selecciona la comuna del centro.'); return }
       if (!centroTel.trim()) { setError('Ingresa el teléfono del centro.'); return }
       if (!centroEmail.trim()) { setError('Ingresa el email del centro.'); return }
     }
 
     setLoading(true)
 
-    const { data, error: signUpError } = await supabaseBrowser.auth.signUp({ email, password })
-    if (signUpError || !data.user) {
-      setError(signUpError?.message ?? 'Error al crear la cuenta.')
+    // Registro server-side (evita problemas de red del browser con Supabase)
+    const res = await fetch('/api/auth/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: email.trim(),
+        password,
+        nombre: nombre.trim(),
+        rut: rut.trim(),
+        role,
+        ...(role === 'admin' && {
+          centro: {
+            nombre: centroNombre.trim(),
+            direccion: centroDir.trim(),
+            comuna: centroComuna,
+            region: centroRegion,
+            telefono: centroTel.trim(),
+            email: centroEmail.trim(),
+            descripcion: centroDesc.trim(),
+          },
+        }),
+      }),
+    })
+
+    const json = await res.json()
+
+    if (!res.ok) {
+      setError(json.error ?? 'Error al crear la cuenta.')
       setLoading(false)
       return
     }
 
-    const userId = data.user.id
+    // Cuenta creada — iniciar sesión automáticamente
+    const { error: signInError } = await supabaseBrowser.auth.signInWithPassword({
+      email: email.trim(),
+      password,
+    })
 
-    const { error: profileError } = await supabaseBrowser
-      .from('profiles')
-      .insert({ id: userId, nombre: nombre.trim(), role, rut: rut.trim() || null })
-
-    if (profileError) {
-      setError(`Error al guardar el perfil: ${profileError.message}`)
-      setLoading(false)
+    if (signInError) {
+      // Cuenta creada pero no se pudo iniciar sesión desde el browser
+      // Redirigir al login con mensaje
+      window.location.href = '/auth/login?registered=1'
       return
     }
 
     if (role === 'admin') {
-      const { error: centroError } = await supabaseBrowser
-        .from('centros')
-        .insert({
-          nombre: centroNombre.trim(),
-          direccion: centroDir.trim(),
-          comuna: centroComuna.trim(),
-          region: centroRegion.trim(),
-          administrador: nombre.trim(),
-          telefono: centroTel.trim(),
-          email: centroEmail.trim(),
-          descripcion: centroDesc.trim() || `Centro de acopio administrado por ${nombre.trim()}.`,
-          activo: true,
-          admin_id: userId,
-        })
-
-      if (centroError) {
-        setError(`Error al crear el centro: ${centroError.message}`)
-        setLoading(false)
-        return
-      }
+      setCentroEnviado(true)
+      setLoading(false)
+    } else {
+      window.location.href = '/'
     }
+  }
 
-    window.location.href = '/'
+  if (centroEnviado) {
+    return (
+      <div className="bg-white rounded-lg shadow-lg w-full max-w-lg p-8 my-4 text-center">
+        <div className="text-5xl mb-4">🕓</div>
+        <h1 className="text-2xl font-bold text-ch-dark mb-2">Centro registrado</h1>
+        <p className="text-ch-gray-text text-sm mb-6">
+          Tu cuenta fue creada y tu centro <strong>{centroNombre.trim()}</strong> quedó{' '}
+          <strong>pendiente de validación</strong>. Un administrador de la plataforma lo revisará
+          antes de que aparezca públicamente. Mientras tanto puedes gestionarlo desde{' '}
+          <strong>Mi Centro</strong>.
+        </p>
+        <a
+          href="/"
+          className="inline-block bg-ch-blue hover:bg-ch-blue-hover text-white font-bold py-3 px-6 rounded transition-colors text-sm"
+        >
+          Ir al inicio
+        </a>
+      </div>
+    )
   }
 
   return (
@@ -105,9 +143,7 @@ export default function RegisterPage() {
               type="button"
               onClick={() => setRole('usuario')}
               className={`p-4 rounded-lg border-2 text-left transition-colors ${
-                role === 'usuario'
-                  ? 'border-ch-blue bg-blue-50'
-                  : 'border-gray-200 hover:border-ch-blue'
+                role === 'usuario' ? 'border-ch-blue bg-blue-50' : 'border-gray-200 hover:border-ch-blue'
               }`}
             >
               <div className="text-2xl mb-1">💙</div>
@@ -118,9 +154,7 @@ export default function RegisterPage() {
               type="button"
               onClick={() => setRole('admin')}
               className={`p-4 rounded-lg border-2 text-left transition-colors ${
-                role === 'admin'
-                  ? 'border-ch-blue bg-blue-50'
-                  : 'border-gray-200 hover:border-ch-blue'
+                role === 'admin' ? 'border-ch-blue bg-blue-50' : 'border-gray-200 hover:border-ch-blue'
               }`}
             >
               <div className="text-2xl mb-1">🏛️</div>
@@ -130,18 +164,16 @@ export default function RegisterPage() {
           </div>
         </div>
 
-        {/* Datos personales */}
         {role && (
           <>
+            {/* Datos personales */}
             <div className="border-t border-gray-100 pt-4">
               <p className="text-xs font-semibold text-ch-gray-text uppercase tracking-wide mb-3">
                 Datos personales
               </p>
               <div className="space-y-3">
                 <div>
-                  <label className="block text-sm font-semibold text-ch-dark mb-1">
-                    Nombre completo
-                  </label>
+                  <label className="block text-sm font-semibold text-ch-dark mb-1">Nombre completo</label>
                   <input
                     type="text"
                     value={nombre}
@@ -164,9 +196,7 @@ export default function RegisterPage() {
                   <p className="text-xs text-ch-gray-text mt-0.5">Formato: 12.345.678-9</p>
                 </div>
                 <div>
-                  <label className="block text-sm font-semibold text-ch-dark mb-1">
-                    Correo electrónico
-                  </label>
+                  <label className="block text-sm font-semibold text-ch-dark mb-1">Correo electrónico</label>
                   <input
                     type="email"
                     value={email}
@@ -176,9 +206,7 @@ export default function RegisterPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-semibold text-ch-dark mb-1">
-                    Contraseña
-                  </label>
+                  <label className="block text-sm font-semibold text-ch-dark mb-1">Contraseña</label>
                   <input
                     type="password"
                     value={password}
@@ -198,9 +226,7 @@ export default function RegisterPage() {
                 </p>
                 <div className="space-y-3">
                   <div>
-                    <label className="block text-sm font-semibold text-ch-dark mb-1">
-                      Nombre del centro
-                    </label>
+                    <label className="block text-sm font-semibold text-ch-dark mb-1">Nombre del centro</label>
                     <input
                       type="text"
                       value={centroNombre}
@@ -210,9 +236,7 @@ export default function RegisterPage() {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-semibold text-ch-dark mb-1">
-                      Dirección
-                    </label>
+                    <label className="block text-sm font-semibold text-ch-dark mb-1">Dirección</label>
                     <input
                       type="text"
                       value={centroDir}
@@ -221,37 +245,38 @@ export default function RegisterPage() {
                       className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-ch-blue focus:ring-1 focus:ring-ch-blue"
                     />
                   </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-sm font-semibold text-ch-dark mb-1">
-                        Comuna
-                      </label>
-                      <input
-                        type="text"
-                        value={centroComuna}
-                        onChange={e => setCentroComuna(e.target.value)}
-                        placeholder="Ej: Quilicura"
-                        className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-ch-blue focus:ring-1 focus:ring-ch-blue"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-semibold text-ch-dark mb-1">
-                        Región
-                      </label>
-                      <input
-                        type="text"
-                        value={centroRegion}
-                        onChange={e => setCentroRegion(e.target.value)}
-                        placeholder="Ej: Metropolitana"
-                        className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-ch-blue focus:ring-1 focus:ring-ch-blue"
-                      />
-                    </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-ch-dark mb-1">Región</label>
+                    <select
+                      value={centroRegion}
+                      onChange={e => handleCambiarRegion(e.target.value)}
+                      className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-ch-blue focus:ring-1 focus:ring-ch-blue"
+                    >
+                      <option value="">Selecciona una región...</option>
+                      {NOMBRES_REGIONES.map(r => (
+                        <option key={r} value={r}>{r}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-ch-dark mb-1">Comuna</label>
+                    <select
+                      value={centroComuna}
+                      onChange={e => setCentroComuna(e.target.value)}
+                      disabled={!centroRegion}
+                      className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-ch-blue focus:ring-1 focus:ring-ch-blue disabled:bg-gray-100 disabled:text-ch-gray-text disabled:cursor-not-allowed"
+                    >
+                      <option value="">
+                        {centroRegion ? 'Selecciona una comuna...' : 'Primero selecciona una región'}
+                      </option>
+                      {comunasDisponibles.map(c => (
+                        <option key={c} value={c}>{c}</option>
+                      ))}
+                    </select>
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-sm font-semibold text-ch-dark mb-1">
-                        Teléfono
-                      </label>
+                      <label className="block text-sm font-semibold text-ch-dark mb-1">Teléfono</label>
                       <input
                         type="tel"
                         value={centroTel}
@@ -261,9 +286,7 @@ export default function RegisterPage() {
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-semibold text-ch-dark mb-1">
-                        Email del centro
-                      </label>
+                      <label className="block text-sm font-semibold text-ch-dark mb-1">Email del centro</label>
                       <input
                         type="email"
                         value={centroEmail}

@@ -23,12 +23,12 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       authUser = {
         id: user.id,
         nombre: profileData.nombre,
-        role: profileData.role as 'usuario' | 'admin',
+        role: profileData.role as 'usuario' | 'admin' | 'plataforma',
       }
     }
   }
 
-  const centros = await getCentros()
+  const centros = await getCentros(authUser?.id)
 
   const iniciales = authUser?.nombre
     .split(' ')
@@ -61,7 +61,11 @@ export default async function AppLayout({ children }: { children: React.ReactNod
                 <div className="hidden sm:flex flex-col items-end">
                   <span className="text-white text-sm font-medium">{authUser.nombre}</span>
                   <span className="text-blue-200 text-xs capitalize">
-                    {authUser.role === 'admin' ? 'Administrador de centro' : 'Donante'}
+                    {authUser.role === 'admin'
+                      ? 'Administrador de centro'
+                      : authUser.role === 'plataforma'
+                        ? 'Administrador de plataforma'
+                        : 'Donante'}
                   </span>
                 </div>
                 <div className="w-9 h-9 rounded-full bg-white bg-opacity-20 flex items-center justify-center text-white font-bold text-sm">
@@ -96,10 +100,22 @@ export default async function AppLayout({ children }: { children: React.ReactNod
                   Inicio
                 </a>
               </li>
+              <li>
+                <a href="/mapa" className="block px-4 py-2.5 text-blue-100 hover:bg-white hover:bg-opacity-10 hover:text-white transition-colors font-medium">
+                  Mapa
+                </a>
+              </li>
               {authUser?.role === 'admin' && (
                 <li>
                   <a href="/mi-centro" className="block px-4 py-2.5 text-blue-100 hover:bg-white hover:bg-opacity-10 hover:text-white transition-colors font-medium">
                     Mi Centro
+                  </a>
+                </li>
+              )}
+              {authUser?.role === 'plataforma' && (
+                <li>
+                  <a href="/admin" className="block px-4 py-2.5 text-blue-100 hover:bg-white hover:bg-opacity-10 hover:text-white transition-colors font-medium">
+                    Validación de centros
                   </a>
                 </li>
               )}

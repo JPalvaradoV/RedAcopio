@@ -51,6 +51,19 @@ body {
   animation: fadeInUp 0.25s ease-out;
 }
 
+/* Animación del pin urgente en el mapa */
+@keyframes pulsePin {
+  0%   { transform: scale(1);   opacity: .55; }
+  70%  { transform: scale(2.6); opacity: 0; }
+  100% { transform: scale(2.6); opacity: 0; }
+}
+
+/* El mapa Leaflet debe quedar por debajo del header y los modales */
+.leaflet-container { z-index: 0; }
+.leaflet-pane,
+.leaflet-top,
+.leaflet-bottom { z-index: 1; }
+
 /* Badge de urgencia */
 .badge-alta {
   background-color: #FDEDEC;

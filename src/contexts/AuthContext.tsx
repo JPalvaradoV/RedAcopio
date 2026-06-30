@@ -6,7 +6,7 @@ import type { ReactNode } from 'react'
 export interface AuthUser {
   id: string
   nombre: string
-  role: 'usuario' | 'admin'
+  role: 'usuario' | 'admin' | 'plataforma'
 }
 
 const AuthContext = createContext<AuthUser | null>(null)

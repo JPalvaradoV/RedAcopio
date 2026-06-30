@@ -1,9 +1,14 @@
 'use client'
 
 import { useState } from 'react'
+import { useSearchParams } from 'next/navigation'
+import { Suspense } from 'react'
 import { supabaseBrowser } from '@/lib/supabase-browser'
 
-export default function LoginPage() {
+function LoginForm() {
+  const params = useSearchParams()
+  const recienRegistrado = params.get('registered') === '1'
+
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
@@ -29,6 +34,12 @@ export default function LoginPage() {
     <div className="bg-white rounded-lg shadow-lg w-full max-w-md p-8">
       <h1 className="text-2xl font-bold text-ch-dark mb-1">Iniciar sesión</h1>
       <p className="text-ch-gray-text text-sm mb-6">Ingresa a tu cuenta de Red de Acopio</p>
+
+      {recienRegistrado && (
+        <div className="bg-green-50 border border-green-200 rounded px-3 py-2 mb-5 text-sm text-green-800">
+          ✅ Cuenta creada. Ingresa con tu correo y contraseña para continuar.
+        </div>
+      )}
 
       <form onSubmit={handleSubmit} noValidate className="space-y-4">
         <div>
@@ -83,5 +94,13 @@ export default function LoginPage() {
         </a>
       </p>
     </div>
+  )
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <LoginForm />
+    </Suspense>
   )
 }

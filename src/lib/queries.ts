@@ -21,6 +21,7 @@ function transformCentro(row: Record<string, unknown>): CentroAcopio {
     email: row.email as string,
     descripcion: row.descripcion as string,
     activo: row.activo as boolean,
+    estado: ((row.estado as string | null) ?? 'aprobado') as 'pendiente' | 'aprobado' | 'rechazado',
     adminId: (row.admin_id as string | null) ?? undefined,
     necesidadesUrgentes: (
       (row.necesidades_urgentes as Record<string, unknown>[] | null) ?? []
@@ -62,7 +63,7 @@ function transformCentro(row: Record<string, unknown>): CentroAcopio {
   }
 }
 
-export async function getCentros(): Promise<CentroAcopio[]> {
+export async function getCentros(currentUserId?: string): Promise<CentroAcopio[]> {
   const supabase = await createSupabaseServerClient()
   const { data, error } = await supabase
     .from('centros')
@@ -71,5 +72,12 @@ export async function getCentros(): Promise<CentroAcopio[]> {
     .order('created_at', { ascending: true })
 
   if (error || !data) return []
-  return data.map(transformCentro)
+
+  // Solo se exponen centros aprobados. El usuario también ve su propio centro
+  // aunque esté pendiente, para poder gestionarlo en "Mi Centro".
+  return data
+    .map(transformCentro)
+    .filter(
+      c => c.estado === 'aprobado' || (currentUserId != null && c.adminId === currentUserId)
+    )
 }

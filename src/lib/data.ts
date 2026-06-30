@@ -61,5 +61,6 @@ export interface CentroAcopio {
   rating: number
   totalComentarios: number
   activo: boolean
+  estado: 'pendiente' | 'aprobado' | 'rechazado'
   adminId?: string
 }

@@ -29,7 +29,7 @@ export async function middleware(request: NextRequest) {
     return supabaseResponse
   }
 
-  if (pathname.startsWith('/mi-centro') && !user) {
+  if ((pathname.startsWith('/mi-centro') || pathname.startsWith('/admin')) && !user) {
     return NextResponse.redirect(new URL('/auth/login', request.url))
   }
 

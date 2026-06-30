@@ -154,6 +154,31 @@ export default function MiCentroPage() {
         <span className="text-ch-dark font-medium">Mi Centro</span>
       </nav>
 
+      {/* Aviso de estado de validación */}
+      {centroLogueado.estado === 'pendiente' && (
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6 flex items-start gap-3">
+          <span className="text-xl">🕓</span>
+          <div>
+            <p className="font-semibold text-yellow-800 text-sm">Centro pendiente de validación</p>
+            <p className="text-yellow-700 text-sm">
+              Tu centro aún no aparece públicamente. Un administrador de la plataforma lo revisará pronto.
+              Puedes ir preparando tus pedidos y stock mientras tanto.
+            </p>
+          </div>
+        </div>
+      )}
+      {centroLogueado.estado === 'rechazado' && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6 flex items-start gap-3">
+          <span className="text-xl">⚠️</span>
+          <div>
+            <p className="font-semibold text-ch-red text-sm">Centro rechazado</p>
+            <p className="text-red-700 text-sm">
+              Tu centro no fue aprobado y no aparece públicamente. Contacta a la plataforma para más información.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Cabecera del panel */}
       <div className="bg-white border border-gray-200 rounded-lg p-6 mb-6 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
         <div>
